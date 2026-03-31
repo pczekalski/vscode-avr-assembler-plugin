@@ -1,0 +1,69 @@
+{
+  "name": "avr-assembler",
+  "displayName": "AVR Assembler",
+  "description": "AVR plugin for Assembler code compilation",
+  "version": "0.0.1",
+  "publisher": "Piotr Czekalski",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:avr-asm-builder.buildCurrentFile"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "avr-asm-builder.buildCurrentFile",
+        "title": "AVR: Build Current .s File"
+      }
+    ],
+    "configuration": {
+      "title": "AVR ASM Builder",
+      "properties": {
+        "avr-asm-builder.mcu": {
+          "type": "string",
+          "default": "atmega328p",
+          "description": "MCU passed to avr-gcc via -mmcu="
+        },
+        "avr-asm-builder.avrGccPath": {
+          "type": "string",
+          "default": "avr-gcc",
+          "description": "Path or command name for avr-gcc"
+        },
+        "avr-asm-builder.avrObjcopyPath": {
+          "type": "string",
+          "default": "avr-objcopy",
+          "description": "Path or command name for avr-objcopy"
+        },
+        "avr-asm-builder.outputDirectory": {
+          "type": "string",
+          "default": "build",
+          "description": "Directory relative to workspace or source file where build artifacts are written"
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "avr-asm-builder.buildCurrentFile",
+          "when": "resourceExtname == .s",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.4"
+  }
+}
