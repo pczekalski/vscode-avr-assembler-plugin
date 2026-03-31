@@ -9,7 +9,7 @@ export default [{
 
     languageOptions: {
         parser: typescriptEslint.parser,
-        ecmaVersion: 2022,
+        ecmaVersion: 2020,
         sourceType: "module",
     },
 

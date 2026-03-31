@@ -5,7 +5,6 @@ import * as path from 'path';
 
 type RunResult = {
     code: number | null;
-    signal: NodeJS.Signals | null;
 };
 
 function runCommand(
@@ -17,152 +16,196 @@ function runCommand(
     return new Promise((resolve, reject) => {
         output.appendLine(`> ${command} ${args.join(' ')}`);
 
-        const child = spawn(command, args, {
-            cwd,
-            shell: false
-        });
+        const child = spawn(command, args, { cwd, shell: false });
 
-        child.stdout.on('data', (data: Buffer) => {
-            output.append(data.toString());
-        });
+        child.stdout.on('data', (d) => output.append(d.toString()));
+        child.stderr.on('data', (d) => output.append(d.toString()));
 
-        child.stderr.on('data', (data: Buffer) => {
-            output.append(data.toString());
-        });
-
-        child.on('error', (err: Error) => {
-            reject(err);
-        });
-
-        child.on('close', (code, signal) => {
-            resolve({ code, signal });
-        });
+        child.on('error', (err) => reject(err));
+        child.on('close', (code) => resolve({ code }));
     });
+}
+
+function getPaths(doc: vscode.TextDocument) {
+    const source = doc.fileName;
+
+    const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
+    const baseDir = workspace?.uri.fsPath ?? path.dirname(source);
+
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+    const buildDir = path.join(baseDir, config.get<string>('outputDirectory', 'build'));
+
+    fs.mkdirSync(buildDir, { recursive: true });
+
+    const name = path.basename(source, '.s');
+
+    return {
+        source,
+        baseDir,
+        buildDir,
+        object: path.join(buildDir, name + '.o'),
+        elf: path.join(buildDir, name + '.elf'),
+        hex: path.join(buildDir, name + '.hex')
+    };
+}
+
+async function build(output: vscode.OutputChannel) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No active editor');
+        return;
+    }
+
+    const doc = editor.document;
+
+    if (doc.isUntitled) {
+        vscode.window.showErrorMessage('Save file first');
+        return;
+    }
+
+    if (!doc.fileName.endsWith('.s')) {
+        vscode.window.showErrorMessage('Only .s files supported');
+        return;
+    }
+
+    await doc.save();
+
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+
+    const mcu = config.get<string>('mcu', 'atmega328p');
+    const avrGcc = config.get<string>('avrGccPath', 'avr-gcc');
+    const avrObjcopy = config.get<string>('avrObjcopyPath', 'avr-objcopy');
+    const avrSize = config.get<string>('avrSizePath', 'avr-size');
+    const useNoStartFiles = config.get<boolean>('useNoStartFiles', true);
+
+    const p = getPaths(doc);
+
+    output.clear();
+    output.show(true);
+
+    output.appendLine(`Source : ${p.source}`);
+    output.appendLine(`Build  : ${p.buildDir}`);
+    output.appendLine(`MCU    : ${mcu}`);
+    output.appendLine(`useNoStartFiles = ${useNoStartFiles}`);
+    output.appendLine('');
+
+    // --- assemble ---
+    let r = await runCommand(
+        avrGcc,
+        ['-mmcu=' + mcu, '-c', p.source, '-o', p.object],
+        p.baseDir,
+        output
+    );
+
+    if (r.code !== 0) {
+        output.appendLine('\nFAILED at assemble');
+        return;
+    }
+
+    // --- link ---
+    const linkArgs = useNoStartFiles
+        ? ['-mmcu=' + mcu, '-nostartfiles', p.object, '-o', p.elf]
+        : ['-mmcu=' + mcu, p.object, '-o', p.elf];
+
+    r = await runCommand(avrGcc, linkArgs, p.baseDir, output);
+
+    if (r.code !== 0) {
+        output.appendLine('\nFAILED at link');
+        return;
+    }
+
+    // --- objcopy ---
+    r = await runCommand(
+        avrObjcopy,
+        ['-O', 'ihex', '-R', '.eeprom', p.elf, p.hex],
+        p.baseDir,
+        output
+    );
+
+    if (r.code !== 0) {
+        output.appendLine('\nFAILED at objcopy');
+        return;
+    }
+
+    // --- size ---
+    output.appendLine('\nSIZE:');
+    await runCommand(avrSize, [p.elf], p.baseDir, output);
+
+    output.appendLine('\nBUILD OK');
+    vscode.window.showInformationMessage('Build OK');
+}
+
+async function upload(output: vscode.OutputChannel) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const doc = editor.document;
+
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+
+    const avrdude = config.get<string>('avrdudePath', 'avrdude');
+    const programmer = config.get<string>('avrdudeProgrammer', 'arduino');
+    const port = config.get<string>('avrdudePort', '/dev/ttyUSB0');
+    const baud = config.get<number>('avrdudeBaud', 115200);
+    const mcu = config.get<string>('mcu', 'atmega328p');
+
+    const p = getPaths(doc);
+
+    if (!fs.existsSync(p.hex)) {
+        vscode.window.showErrorMessage('HEX not found. Build first.');
+        return;
+    }
+
+    output.clear();
+    output.show(true);
+
+    let args = [
+        '-c', programmer,
+        '-p', mcu,
+        '-P', port,
+        '-b', String(baud),
+        '-D',
+        '-U', `flash:w:${p.hex}:i`
+    ];
+
+    let r = await runCommand(avrdude, args, p.baseDir, output);
+
+    if (r.code !== 0) {
+        output.appendLine('\nUPLOAD FAILED');
+        return;
+    }
+
+    output.appendLine('\nUPLOAD OK');
+    vscode.window.showInformationMessage('Upload OK');
 }
 
 export function activate(context: vscode.ExtensionContext) {
     const output = vscode.window.createOutputChannel('AVR ASM Builder');
 
-    const disposable = vscode.commands.registerCommand(
+    const buildCmd = vscode.commands.registerCommand(
         'avr-asm-builder.buildCurrentFile',
-        async () => {
-            try {
-                const editor = vscode.window.activeTextEditor;
-                if (!editor) {
-                    vscode.window.showErrorMessage('No active editor.');
-                    return;
-                }
-
-                const doc = editor.document;
-                if (doc.isUntitled) {
-                    vscode.window.showErrorMessage('Please save the file first.');
-                    return;
-                }
-
-                const sourceFile = doc.fileName;
-                const ext = path.extname(sourceFile).toLowerCase();
-
-                if (ext !== '.s') {
-                    vscode.window.showErrorMessage('This command only supports .s files.');
-                    return;
-                }
-
-                if (!fs.existsSync(sourceFile)) {
-                    vscode.window.showErrorMessage('Source file does not exist.');
-                    return;
-                }
-
-                await doc.save();
-
-                const config = vscode.workspace.getConfiguration('avr-asm-builder');
-                const mcu = config.get<string>('mcu', 'atmega328p');
-                const avrGcc = config.get<string>('avrGccPath', 'avr-gcc');
-                const avrObjcopy = config.get<string>('avrObjcopyPath', 'avr-objcopy');
-                const outputDirectoryName = config.get<string>('outputDirectory', 'build');
-
-                const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
-                const baseDir = workspaceFolder?.uri.fsPath ?? path.dirname(sourceFile);
-                const buildDir = path.resolve(baseDir, outputDirectoryName);
-
-                fs.mkdirSync(buildDir, { recursive: true });
-
-                const baseName = path.basename(sourceFile, '.s');
-                const objectFile = path.join(buildDir, `${baseName}.o`);
-                const elfFile = path.join(buildDir, `${baseName}.elf`);
-                const hexFile = path.join(buildDir, `${baseName}.hex`);
-
-                output.clear();
-                output.show(true);
-                output.appendLine(`Source : ${sourceFile}`);
-                output.appendLine(`Build  : ${buildDir}`);
-                output.appendLine(`MCU    : ${mcu}`);
-                output.appendLine('');
-
-                // Step 1: assemble .s -> .o
-                const assembleArgs = [
-                    '-mmcu=' + mcu,
-                    '-c',
-                    sourceFile,
-                    '-o',
-                    objectFile
-                ];
-
-                const assembleResult = await runCommand(avrGcc, assembleArgs, baseDir, output);
-                if (assembleResult.code !== 0) {
-                    vscode.window.showErrorMessage(`Assembling failed with exit code ${assembleResult.code}.`);
-                    output.appendLine('\nBuild stopped at assemble stage.');
-                    return;
-                }
-
-                // Step 2: link .o -> .elf
-                const linkArgs = [
-                    '-mmcu=' + mcu,
-                    objectFile,
-                    '-o',
-                    elfFile
-                ];
-
-                const linkResult = await runCommand(avrGcc, linkArgs, baseDir, output);
-                if (linkResult.code !== 0) {
-                    vscode.window.showErrorMessage(`Linking failed with exit code ${linkResult.code}.`);
-                    output.appendLine('\nBuild stopped at link stage.');
-                    return;
-                }
-
-                // Step 3: convert .elf -> .hex
-                const objcopyArgs = [
-                    '-O',
-                    'ihex',
-                    '-R',
-                    '.eeprom',
-                    elfFile,
-                    hexFile
-                ];
-
-                const objcopyResult = await runCommand(avrObjcopy, objcopyArgs, baseDir, output);
-                if (objcopyResult.code !== 0) {
-                    vscode.window.showErrorMessage(`HEX conversion failed with exit code ${objcopyResult.code}.`);
-                    output.appendLine('\nBuild stopped at objcopy stage.');
-                    return;
-                }
-
-                output.appendLine('\nBuild successful.');
-                output.appendLine(`Generated:`);
-                output.appendLine(`  ${objectFile}`);
-                output.appendLine(`  ${elfFile}`);
-                output.appendLine(`  ${hexFile}`);
-
-                vscode.window.showInformationMessage(`AVR build successful: ${path.basename(hexFile)}`);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                vscode.window.showErrorMessage(`Build failed: ${message}`);
-                output.show(true);
-                output.appendLine(`\nERROR: ${message}`);
-            }
-        }
+        () => build(output)
     );
 
-    context.subscriptions.push(disposable, output);
+    const uploadCmd = vscode.commands.registerCommand(
+        'avr-asm-builder.uploadCurrentHex',
+        () => upload(output)
+    );
+
+    // --- STATUS BAR ---
+    const buildBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    buildBtn.text = '$(tools) AVR Build';
+    buildBtn.command = 'avr-asm-builder.buildCurrentFile';
+
+    const uploadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    uploadBtn.text = '$(arrow-up) AVR Upload';
+    uploadBtn.command = 'avr-asm-builder.uploadCurrentHex';
+    setTimeout(()=> {
+        buildBtn.show();
+        uploadBtn.show();
+    }, 100);
+
+    context.subscriptions.push(buildCmd, uploadCmd, buildBtn, uploadBtn, output);
 }
 
 export function deactivate() {}

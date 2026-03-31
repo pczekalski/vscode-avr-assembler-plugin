@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler",
   "description": "AVR plugin for Assembler code compilation",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "Piotr Czekalski",
   "engines": {
     "vscode": "^1.110.0"
@@ -11,8 +11,10 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:avr-asm-builder.buildCurrentFile"
-  ],
+  "onStartupFinished",
+  "onCommand:avr-asm-builder.buildCurrentFile",
+  "onCommand:avr-asm-builder.uploadCurrentHex"
+],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -43,6 +45,11 @@
           "type": "string",
           "default": "build",
           "description": "Directory relative to workspace or source file where build artifacts are written"
+        },
+        "avr-asm-builder.useNoStartFiles": {
+        "type": "boolean",
+        "default": true,
+        "description": "Link with -nostartfiles for pure assembly projects"
         }
       }
     },
