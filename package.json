@@ -49,6 +49,11 @@
           "default": "avr-objcopy",
           "description": "Path or command name for avr-objcopy"
         },
+        "avr-asm-builder.avrSizePath": {
+          "type": "string",
+          "default": "avr-size",
+          "description": "Path or command name for avr-size"
+        },
         "avr-asm-builder.outputDirectory": {
           "type": "string",
           "default": "build",
