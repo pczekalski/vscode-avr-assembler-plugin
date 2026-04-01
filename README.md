@@ -254,6 +254,66 @@ Baud rate used for uploading via `avrdude`.
   - per project (`.vscode/settings.json`)
 - Changes take effect immediately (no restart required)
 
+## Example
+
+Below is a minimal AVR assembly example that blinks the built-in LED on **Arduino Uno (ATmega328P, PB5 / pin 13)**.
+
+Create a file named `main.s`:
+
+```asm
+.org 0x0000
+rjmp RESET
+
+DDRB  =0x04
+PORTB =0x05
+
+RESET:
+    ldi r16, 1 << 5        ; Set bit 5
+    out DDRB, r16          ; Set PB5 as output
+
+LOOP:
+    sbi PORTB, 5           ; Turn LED on
+    rcall delay
+    cbi PORTB, 5           ; Turn LED off
+    rcall delay
+    rjmp LOOP
+
+delay:
+    ldi r20, 60     ; Outer loop
+outer_loop:
+    ldi r18, 250    ; Mid loop
+mid_loop:
+    ldi r19, 250    ; Inner loop
+inner_loop:
+    dec r19
+    brne inner_loop
+    dec r18
+    brne mid_loop
+    dec r20
+    brne outer_loop
+    ret
+```
+
+### How to run
+
+1. Open `main.s` in Visual Studio Code  
+2. Click **AVR Build** in the status bar or run:
+   ```text
+   AVR: Build Current .s File
+   ```
+3. Upload to your device:
+   ```text
+   AVR: Upload Current HEX
+   ```
+
+### Notes
+
+- The example configures **PB5 (Arduino pin 13)** as output.
+- A simple software delay loop is used for timing.
+- Make sure your settings match your hardware:
+  - `avr-asm-builder.mcu`
+  - `avr-asm-builder.avrdudePort`
+
 ## Known Issues
 
 Linking errors (e.g. unknown identifier such as label) do not guide you to the source file when clicking an error in the output console.
@@ -263,6 +323,10 @@ Linking errors (e.g. unknown identifier such as label) do not guide you to the s
 ### 0.1.0
 
 Initial release for public
+
+### 0.1.9
+
+RC-1 version with sidebar, icons, documentation and settings
 
 
 ## About the project:

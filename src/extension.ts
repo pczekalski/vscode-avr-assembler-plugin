@@ -18,6 +18,8 @@ type BuildPaths = {
     hex: string;
 };
 
+
+
 function runCommand(
     command: string,
     args: string[],
@@ -464,6 +466,201 @@ async function uploadCurrentHex(output: vscode.OutputChannel): Promise<void> {
     vscode.window.showInformationMessage('Upload OK');
 }
 
+class AvrSidebarProvider implements vscode.WebviewViewProvider {
+    public static readonly viewType = 'avrAsmBuilder.sidebar';
+
+    private view?: vscode.WebviewView;
+
+    constructor(
+        private readonly context: vscode.ExtensionContext
+    ) { }
+
+    resolveWebviewView(webviewView: vscode.WebviewView): void {
+        this.view = webviewView;
+
+        webviewView.webview.options = {
+            enableScripts: true
+        };
+
+        webviewView.webview.html = this.getHtml(webviewView.webview);
+        this.postState();
+
+        webviewView.webview.onDidReceiveMessage(async (message) => {
+            switch (message.command) {
+                case 'build':
+                    await vscode.commands.executeCommand('avr-asm-builder.buildCurrentFile');
+                    this.postState();
+                    break;
+
+                case 'upload':
+                    await vscode.commands.executeCommand('avr-asm-builder.uploadCurrentHex');
+                    this.postState();
+                    break;
+
+                case 'selectPort':
+                    await vscode.commands.executeCommand('avr-asm-builder.selectUploadPort');
+                    this.postState();
+                    break;
+
+                case 'openSettings':
+                    await vscode.commands.executeCommand(
+                        'workbench.action.openSettings',
+                        '@ext:pczekalski.avr-assembler'
+                    );
+                    break;
+            }
+        });
+    }
+
+    public refresh(): void {
+        this.postState();
+    }
+
+    private postState(): void {
+        if (!this.view) {
+            return;
+        }
+
+        const config = vscode.workspace.getConfiguration('avr-asm-builder');
+        const mcu = config.get<string>('mcu', 'atmega328p');
+        const port = config.get<string>('avrdudePort', '/dev/ttyUSB0');
+        const programmer = config.get<string>('avrdudeProgrammer', 'arduino');
+        const baud = config.get<number>('avrdudeBaud', 115200);
+        const outputDirectory = config.get<string>('outputDirectory', 'build');
+
+        this.view.webview.postMessage({
+            type: 'state',
+            mcu,
+            port,
+            programmer,
+            baud,
+            outputDirectory
+        });
+    }
+
+    private getHtml(webview: vscode.Webview): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';"
+    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVR Toolbox</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            background: var(--vscode-sideBar-background);
+            padding: 12px;
+        }
+
+        .card {
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: var(--vscode-editor-background);
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .row {
+            margin: 6px 0;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .label {
+            opacity: 0.8;
+            display: inline-block;
+            min-width: 92px;
+        }
+
+        button {
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--vscode-button-border, transparent);
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--vscode-button-foreground);
+            background: var(--vscode-button-background);
+        }
+
+        button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+
+        .secondary {
+            color: var(--vscode-button-secondaryForeground);
+            background: var(--vscode-button-secondaryBackground);
+        }
+
+        .secondary:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="title">AVR Toolbox</div>
+        <div class="row"><span class="label">MCU:</span><span id="mcu">-</span></div>
+        <div class="row"><span class="label">Port:</span><span id="port">-</span></div>
+        <div class="row"><span class="label">Programmer:</span><span id="programmer">-</span></div>
+        <div class="row"><span class="label">Baud:</span><span id="baud">-</span></div>
+        <div class="row"><span class="label">Build dir:</span><span id="outputDirectory">-</span></div>
+    </div>
+
+    <div class="card">
+        <button id="buildBtn">Build Current .s File</button>
+        <button id="uploadBtn">Upload Current HEX</button>
+        <button id="portBtn" class="secondary">Select Upload Port</button>
+        <button id="settingsBtn" class="secondary">Open Settings</button>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        document.getElementById('buildBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'build' });
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'upload' });
+        });
+
+        document.getElementById('portBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'selectPort' });
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'openSettings' });
+        });
+
+        window.addEventListener('message', (event) => {
+            const message = event.data;
+
+            if (message.type === 'state') {
+                document.getElementById('mcu').textContent = message.mcu ?? '-';
+                document.getElementById('port').textContent = message.port ?? '-';
+                document.getElementById('programmer').textContent = message.programmer ?? '-';
+                document.getElementById('baud').textContent = String(message.baud ?? '-');
+                document.getElementById('outputDirectory').textContent = message.outputDirectory ?? '-';
+            }
+        });
+    </script>
+</body>
+</html>`;
+    }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
     const output = vscode.window.createOutputChannel('AVR ASM Builder');
     const diagnostics = vscode.languages.createDiagnosticCollection('avr-asm-builder');
@@ -473,6 +670,7 @@ export function activate(context: vscode.ExtensionContext): void {
         async () => {
             try {
                 await buildCurrentFile(output, diagnostics);
+                sidebarProvider.refresh();
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 output.show(true);
@@ -487,6 +685,7 @@ export function activate(context: vscode.ExtensionContext): void {
         async () => {
             try {
                 await uploadCurrentHex(output);
+                sidebarProvider.refresh();
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 output.show(true);
@@ -501,6 +700,7 @@ export function activate(context: vscode.ExtensionContext): void {
         async () => {
             try {
                 await selectUploadPort();
+                sidebarProvider.refresh();
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 vscode.window.showErrorMessage(`Selecting upload port failed: ${message}`);
@@ -530,6 +730,20 @@ export function activate(context: vscode.ExtensionContext): void {
         diagnostics.delete(doc.uri);
     });
 
+    const sidebarProvider = new AvrSidebarProvider(context);
+
+    const sidebarDisposable = vscode.window.registerWebviewViewProvider(
+        AvrSidebarProvider.viewType,
+        sidebarProvider
+    );
+
+    const configChangeDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('avr-asm-builder')) {
+            sidebarProvider.refresh();
+        }
+    });
+    
+
     context.subscriptions.push(
         output,
         diagnostics,
@@ -539,7 +753,9 @@ export function activate(context: vscode.ExtensionContext): void {
         buildButton,
         uploadButton,
         editorChangeDisposable,
-        documentCloseDisposable
+        documentCloseDisposable,
+        sidebarDisposable,
+        configChangeDisposable
     );
 }
 

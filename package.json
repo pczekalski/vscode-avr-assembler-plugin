@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "publisher": "pczekalski",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",
@@ -49,57 +49,77 @@
       }
     ],
     "configuration": {
-      "title": "AVR ASM Builder",
+      "title": "AVR ASM Builder Settings",
       "properties": {
         "avr-asm-builder.mcu": {
           "type": "string",
           "default": "atmega328p",
-          "description": "MCU passed to avr-gcc via -mmcu="
-        },
-        "avr-asm-builder.avrGccPath": {
-          "type": "string",
-          "default": "avr-gcc",
-          "description": "Path or command name for avr-gcc"
-        },
-        "avr-asm-builder.avrObjcopyPath": {
-          "type": "string",
-          "default": "avr-objcopy",
-          "description": "Path or command name for avr-objcopy"
-        },
-        "avr-asm-builder.avrSizePath": {
-          "type": "string",
-          "default": "avr-size",
-          "description": "Path or command name for avr-size"
+          "title": "Target MCU",
+          "markdownDescription": "AVR microcontroller passed to `avr-gcc` via `-mmcu=` and used by upload tools where applicable.",
+          "order": 1
         },
         "avr-asm-builder.outputDirectory": {
           "type": "string",
           "default": "build",
-          "description": "Directory relative to workspace or source file where build artifacts are written"
+          "title": "Output Directory",
+          "markdownDescription": "Directory, relative to the workspace or source file, where generated build artifacts such as `.o`, `.elf`, and `.hex` files are written.",
+          "order": 2
         },
         "avr-asm-builder.useNoStartFiles": {
           "type": "boolean",
           "default": true,
-          "description": "Link with -nostartfiles for pure assembly projects"
+          "title": "Use No Start Files",
+          "markdownDescription": "If enabled, links with `-nostartfiles`. Recommended for pure AVR assembly projects that provide their own reset vector and startup code.",
+          "order": 3
+        },
+        "avr-asm-builder.avrGccPath": {
+          "type": "string",
+          "default": "avr-gcc",
+          "title": "AVR-GCC Path",
+          "markdownDescription": "Path or command name for `avr-gcc`. Use an absolute path if the AVR toolchain is not available in your system `PATH`.",
+          "order": 10
+        },
+        "avr-asm-builder.avrObjcopyPath": {
+          "type": "string",
+          "default": "avr-objcopy",
+          "title": "AVR-Objcopy Path",
+          "markdownDescription": "Path or command name for `avr-objcopy`.",
+          "order": 11
+        },
+        "avr-asm-builder.avrSizePath": {
+          "type": "string",
+          "default": "avr-size",
+          "title": "AVR-Size Path",
+          "markdownDescription": "Path or command name for `avr-size`.",
+          "order": 12
         },
         "avr-asm-builder.avrdudePath": {
           "type": "string",
           "default": "avrdude",
-          "description": "Path or command name for avrdude"
+          "title": "AVRDUDE Path",
+          "markdownDescription": "Path or command name for `avrdude`.",
+          "order": 13
         },
         "avr-asm-builder.avrdudeProgrammer": {
           "type": "string",
           "default": "arduino",
-          "description": "Programmer passed to avrdude via -c"
-        },
-        "avr-asm-builder.avrdudeBaud": {
-          "type": "number",
-          "default": 115200,
-          "description": "Baud rate passed to avrdude via -b"
+          "title": "Upload Programmer",
+          "markdownDescription": "Programmer type passed to `avrdude` via `-c`.",
+          "order": 20
         },
         "avr-asm-builder.avrdudePort": {
           "type": "string",
           "default": "/dev/ttyUSB0",
-          "description": "Upload port passed to avrdude via -P. You can type it manually or use the 'AVR: Select Upload Port' command."
+          "title": "Upload Port",
+          "markdownDescription": "Serial port passed to `avrdude` via `-P`, for example `/dev/ttyUSB0`, `/dev/ttyACM0`, or `COM3`. You can enter it manually or use the **AVR: Select Upload Port** command.",
+          "order": 4
+        },
+        "avr-asm-builder.avrdudeBaud": {
+          "type": "number",
+          "default": 115200,
+          "title": "Upload Baud Rate",
+          "markdownDescription": "Baud rate passed to `avrdude` via `-b`.",
+          "order": 5
         }
       }
     },
@@ -109,6 +129,24 @@
           "command": "avr-asm-builder.buildCurrentFile",
           "when": "resourceExtname == .s",
           "group": "navigation"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "avrAsmBuilder",
+          "title": "AVR",
+          "icon": "images/avr_sidebar_icon_simplified.svg"
+        }
+      ]
+    },
+    "views": {
+      "avrAsmBuilder": [
+        {
+          "id": "avrAsmBuilder.sidebar",
+          "name": "AVR Toolbox",
+          "type": "webview"
         }
       ]
     }
