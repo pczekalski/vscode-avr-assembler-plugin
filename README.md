@@ -24,11 +24,13 @@
   <img alt="AVR Toolchain" src="https://img.shields.io/badge/toolchain-avr--gcc%20%7C%20avrdude-green">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-brightgreen">
 </p>
-# avr-assembler README
 
 AVR Assembler Toolbox is a lightweight Visual Studio Code extension for building and uploading AVR assembly (`.s`) projects using the GNU AVR toolchain.
 
 It provides a minimal, fast workflow similar to PlatformIO, but focused on **pure assembler development**.
+<p align="center">
+  <img src="images/AVR_VSCode.png" alt="AVR Assembler Toolbox" height="120">
+</p>
 
 ## Features
 
@@ -265,12 +267,15 @@ Initial release for public
 
 ## About the project:
 
+<img src="images/EN-Co-Funded-logo.png" alt="Co-Funded by the European Union" height="64">
 The MultiASM project has been co-funded by the European Union. Views and opinions expressed are however those of the author or authors only and do not necessarily reflect those of the European Union or the Foundation for the Development of the Education System. Neither the European Union nor the entity providing the grant can be held responsible for them.
 
 [MultiASM website](https://multiasm.eu)
 
 KA220-HED – Cooperation partnerships in higher education
+
 Project ID: 2023-1-PL01-KA220-HED-000152401
+
 Project implementation period: from 2023.12.01 to 2026.11.30 (36m)
 
 **Enjoy!**
