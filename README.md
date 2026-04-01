@@ -269,4 +269,8 @@ The MultiASM project has been co-funded by the European Union. Views and opinion
 
 [MultiASM website](https://multiasm.eu)
 
+KA220-HED – Cooperation partnerships in higher education
+Project ID: 2023-1-PL01-KA220-HED-000152401
+Project implementation period: from 2023.12.01 to 2026.11.30 (36m)
+
 **Enjoy!**
