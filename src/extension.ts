@@ -2,10 +2,81 @@ import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 type RunResult = {
     code: number | null;
 };
+
+async function detectSerialPorts(): Promise<string[]> {
+    const candidates = new Set<string>();
+
+    if (process.platform === 'linux') {
+        const devDir = '/dev';
+        try {
+            const entries = fs.readdirSync(devDir);
+            for (const name of entries) {
+                if (
+                    name.startsWith('ttyUSB') ||
+                    name.startsWith('ttyACM') ||
+                    name.startsWith('ttyS') ||
+                    name.startsWith('serial')
+                ) {
+                    candidates.add(path.join(devDir, name));
+                }
+            }
+        } catch {
+            // ignore
+        }
+    } else if (process.platform === 'darwin') {
+        const devDir = '/dev';
+        try {
+            const entries = fs.readdirSync(devDir);
+            for (const name of entries) {
+                if (name.startsWith('tty.') || name.startsWith('cu.')) {
+                    candidates.add(path.join(devDir, name));
+                }
+            }
+        } catch {
+            // ignore
+        }
+    } else if (process.platform === 'win32') {
+        // Simple common suggestions. Full COM enumeration is possible but more involved.
+        for (let i = 1; i <= 20; i++) {
+            candidates.add(`COM${i}`);
+        }
+    }
+
+    return Array.from(candidates).sort((a, b) => a.localeCompare(b));
+}
+
+async function selectUploadPort(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+    const currentPort = config.get<string>('avrdudePort', '/dev/ttyUSB0');
+    const detected = await detectSerialPorts();
+
+    const picks: vscode.QuickPickItem[] = detected.map(port => ({
+        label: port,
+        description: port === currentPort ? 'current' : ''
+    }));
+
+    picks.unshift({
+        label: currentPort,
+        description: 'current value'
+    });
+
+    const selected = await vscode.window.showQuickPick(picks, {
+        title: 'Select AVR upload port',
+        placeHolder: 'Choose a detected serial port'
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    await config.update('avrdudePort', selected.label, vscode.ConfigurationTarget.Workspace);
+    vscode.window.showInformationMessage(`AVR upload port set to ${selected.label}`);
+}
 
 function runCommand(
     command: string,
@@ -192,6 +263,18 @@ export function activate(context: vscode.ExtensionContext) {
         () => upload(output)
     );
 
+    const selectPortCmd = vscode.commands.registerCommand(
+        'avr-asm-builder.selectUploadPort',
+        async () => {
+            try {
+                await selectUploadPort();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                vscode.window.showErrorMessage(`Selecting upload port failed: ${message}`);
+            }
+        }
+    );
+
     // --- STATUS BAR ---
     const buildBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
     buildBtn.text = '$(tools) AVR Build';
@@ -200,12 +283,12 @@ export function activate(context: vscode.ExtensionContext) {
     const uploadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
     uploadBtn.text = '$(arrow-up) AVR Upload';
     uploadBtn.command = 'avr-asm-builder.uploadCurrentHex';
-    setTimeout(()=> {
+    setTimeout(() => {
         buildBtn.show();
         uploadBtn.show();
     }, 100);
 
-    context.subscriptions.push(buildCmd, uploadCmd, buildBtn, uploadBtn, output);
+    context.subscriptions.push(buildCmd, uploadCmd, selectPortCmd, buildBtn, uploadBtn, output);
 }
 
-export function deactivate() {}
+export function deactivate() { }

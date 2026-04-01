@@ -1,8 +1,8 @@
 {
   "name": "avr-assembler",
-  "displayName": "AVR Assembler",
-  "description": "AVR plugin for Assembler code compilation",
-  "version": "0.0.3",
+  "displayName": "AVR Assembler Toolbox",
+  "description": "AVR plugin for Assembler code compilation, linking and uploads",
+  "version": "0.1.0",
   "publisher": "Piotr Czekalski",
   "engines": {
     "vscode": "^1.110.0"
@@ -11,16 +11,24 @@
     "Other"
   ],
   "activationEvents": [
-  "onStartupFinished",
-  "onCommand:avr-asm-builder.buildCurrentFile",
-  "onCommand:avr-asm-builder.uploadCurrentHex"
-],
+    "onStartupFinished",
+    "onCommand:avr-asm-builder.buildCurrentFile",
+    "onCommand:avr-asm-builder.uploadCurrentHex"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "avr-asm-builder.buildCurrentFile",
         "title": "AVR: Build Current .s File"
+      },
+      {
+        "command": "avr-asm-builder.uploadCurrentHex",
+        "title": "AVR: Upload Current HEX"
+      },
+      {
+        "command": "avr-asm-builder.selectUploadPort",
+        "title": "AVR: Select Upload Port"
       }
     ],
     "configuration": {
@@ -47,9 +55,29 @@
           "description": "Directory relative to workspace or source file where build artifacts are written"
         },
         "avr-asm-builder.useNoStartFiles": {
-        "type": "boolean",
-        "default": true,
-        "description": "Link with -nostartfiles for pure assembly projects"
+          "type": "boolean",
+          "default": true,
+          "description": "Link with -nostartfiles for pure assembly projects"
+        },
+        "avr-asm-builder.avrdudePath": {
+          "type": "string",
+          "default": "avrdude",
+          "description": "Path or command name for avrdude"
+        },
+        "avr-asm-builder.avrdudeProgrammer": {
+          "type": "string",
+          "default": "arduino",
+          "description": "Programmer passed to avrdude via -c"
+        },
+        "avr-asm-builder.avrdudeBaud": {
+          "type": "number",
+          "default": 115200,
+          "description": "Baud rate passed to avrdude via -b"
+        },
+        "avr-asm-builder.avrdudePort": {
+          "type": "string",
+          "default": "/dev/ttyUSB0",
+          "description": "Upload port passed to avrdude via -P. You can type it manually or use the 'AVR: Select Upload Port' command."
         }
       }
     },
