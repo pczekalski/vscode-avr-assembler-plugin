@@ -1,71 +1,263 @@
+<table width="100%">
+  <tr>
+    <td align="left" valign="middle">
+      <img src="images/EN-Co-Funded-logo.png" alt="Co-Funded by the European Union" height="64">
+    </td>
+    <td align="right" valign="middle">
+      <img src="images/MultiASM-logo.png" alt="MultiASM" height="64">
+    </td>
+  </tr>
+</table>
+
+<h1 align="center">AVR Assembler Toolbox</h1>
+
+<p align="center">
+  AVR plugin for assembler code compilation, linking, size reporting, and uploads directly from Visual Studio Code.
+</p>
+
+<p align="center">
+  <img alt="VS Code" src="https://img.shields.io/badge/VS%20Code-1.110.0%2B-blue">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey">
+  <img alt="AVR Toolchain" src="https://img.shields.io/badge/toolchain-avr--gcc%20%7C%20avrdude-green">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-brightgreen">
+</p>
 # avr-assembler README
 
-This is the README for your extension "avr-assembler". After writing up a brief description, we recommend including the following sections.
+AVR Assembler Toolbox is a lightweight Visual Studio Code extension for building and uploading AVR assembly (`.s`) projects using the GNU AVR toolchain.
+
+It provides a minimal, fast workflow similar to PlatformIO, but focused on **pure assembler development**.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- 🔨 Assemble `.s` → `.o`
+- 🔗 Link `.o` → `.elf` (supports `-nostartfiles`)
+- 📦 Convert `.elf` → `.hex`
+- 📊 Display memory usage (`avr-size`)
+- ⬆ Upload firmware via `avrdude`
+- 🔌 Auto-detect serial ports
+- ⚙ Configurable toolchain paths
+- ❗ Clickable compiler errors (Problems panel integration)
+- 📌 Status bar buttons for quick actions
 
-For example if there is an image subfolder under your extension project workspace:
+### 📁 Supported Files
 
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- AVR assembly source files with extension: `.s`
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+To use **AVR Assembler Toolbox**, ensure the following tools and environment are available.
 
 ---
 
-## Following extension guidelines
+### 🧰 AVR Toolchain
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+This extension depends on the standard AVR GNU toolchain. The following tools must be installed and accessible from your system `PATH`:
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+- `avr-gcc` – compiler/assembler and linker  
+- `avr-objcopy` – converts ELF files to HEX format  
+- `avr-size` – displays memory usage  
+- `avrdude` – uploads firmware to the target device  
 
-## Working with Markdown
+#### Installation (Ubuntu / Debian)
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+```bash
+sudo apt update
+sudo apt install gcc-avr binutils-avr avr-libc avrdude
+```
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+#### Installation (Arch Linux)
 
-## For more information
+```bash
+sudo pacman -S avr-gcc avr-binutils avr-libc avrdude
+```
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+#### Installation (macOS with Homebrew)
+
+```bash
+brew tap osx-cross/avr
+brew install avr-gcc avrdude
+```
+
+#### Installation (Windows)
+
+- Install **WinAVR**, **AVR-GCC toolchain**, or use **MSYS2**
+- Ensure all required tools are added to your system `PATH`
+
+---
+
+### 🖥️ Visual Studio Code
+
+- Visual Studio Code version **1.110.0 or newer**
+- This extension must be installed and enabled
+
+---
+
+### 🔌 Hardware (for upload)
+
+To upload firmware using `avrdude`, you will need:
+
+- A supported AVR microcontroller (e.g. ATmega328P)
+- A compatible programmer or bootloader (e.g. Arduino bootloader)
+- A valid serial/USB port:
+
+| Platform | Example Ports                  |
+|----------|-------------------------------|
+| Linux    | `/dev/ttyUSB0`, `/dev/ttyACM0` |
+| macOS    | `/dev/tty.*`, `/dev/cu.*`      |
+| Windows  | `COM3`, `COM4`, etc.           |
+
+The upload port can be configured manually in settings or selected using:
+
+```
+AVR: Select Upload Port
+```
+
+---
+
+### ⚙️ Optional Configuration
+
+If the AVR toolchain is not available in your system `PATH`, you can configure explicit paths in settings:
+
+```json
+{
+  "avr-asm-builder.avrGccPath": "/path/to/avr-gcc",
+  "avr-asm-builder.avrObjcopyPath": "/path/to/avr-objcopy",
+  "avr-asm-builder.avrSizePath": "/path/to/avr-size",
+  "avr-asm-builder.avrdudePath": "/path/to/avrdude"
+}
+```
+or using settings as described below.
+---
+
+
+
+## Extension Settings
+
+This extension contributes the following settings under the `avr-asm-builder` namespace.
+
+You can configure them via:
+
+- **Settings UI** → search for `AVR ASM Builder`
+- or directly in `settings.json`
+
+---
+
+### ⚙️ Available Settings
+
+#### 🔧 Toolchain
+
+```json
+"avr-asm-builder.avrGccPath": "avr-gcc"
+```
+Path or command name for `avr-gcc`.
+
+```json
+"avr-asm-builder.avrObjcopyPath": "avr-objcopy"
+```
+Path or command name for `avr-objcopy`.
+
+```json
+"avr-asm-builder.avrSizePath": "avr-size"
+```
+Path or command name for `avr-size`.
+
+```json
+"avr-asm-builder.avrdudePath": "avrdude"
+```
+Path or command name for `avrdude`.
+
+---
+
+#### 🧠 Target Configuration
+
+```json
+"avr-asm-builder.mcu": "atmega328p"
+```
+Target MCU passed to:
+- `avr-gcc` via `-mmcu`
+- `avrdude` via `-p`
+
+```json
+"avr-asm-builder.useNoStartFiles": true
+```
+If enabled, uses `-nostartfiles` during linking (recommended for pure assembly projects).
+
+---
+
+#### 📁 Build Configuration
+
+```json
+"avr-asm-builder.outputDirectory": "build"
+```
+Directory where build artifacts are stored (`.o`, `.elf`, `.hex`).
+
+---
+
+#### 🔌 Upload Configuration
+
+```json
+"avr-asm-builder.avrdudeProgrammer": "arduino"
+```
+Programmer passed to `avrdude` via `-c`.
+
+```json
+"avr-asm-builder.avrdudePort": "/dev/ttyUSB0"
+```
+Serial/USB port used for uploading firmware.
+
+You can:
+- set it manually
+- or use command:
+
+```
+AVR: Select Upload Port
+```
+
+```json
+"avr-asm-builder.avrdudeBaud": 115200
+```
+Baud rate used for uploading via `avrdude`.
+
+---
+
+### 📝 Example Configuration
+
+```json
+{
+  "avr-asm-builder.mcu": "atmega328p",
+  "avr-asm-builder.avrGccPath": "/usr/bin/avr-gcc",
+  "avr-asm-builder.avrObjcopyPath": "/usr/bin/avr-objcopy",
+  "avr-asm-builder.avrSizePath": "/usr/bin/avr-size",
+  "avr-asm-builder.avrdudePath": "/usr/bin/avrdude",
+  "avr-asm-builder.avrdudePort": "/dev/ttyACM0",
+  "avr-asm-builder.avrdudeProgrammer": "arduino",
+  "avr-asm-builder.avrdudeBaud": 115200,
+  "avr-asm-builder.outputDirectory": "build",
+  "avr-asm-builder.useNoStartFiles": true
+}
+```
+
+---
+
+### 💡 Notes
+
+- All tool paths can be either:
+  - command names (if available in `PATH`)
+  - or absolute paths
+- Settings can be defined:
+  - globally (user settings)
+  - per project (`.vscode/settings.json`)
+- Changes take effect immediately (no restart required)
+
+## Known Issues
+
+Linking errors (e.g. unknown identifier such as label) do not guide you to the source file when clicking an error in the output console.
+
+## Release Notes
+
+### 0.1.0
+
+Initial release for public
+
 
 **Enjoy!**

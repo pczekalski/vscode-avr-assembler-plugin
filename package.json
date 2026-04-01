@@ -3,7 +3,24 @@
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
   "version": "0.1.0",
-  "publisher": "Piotr Czekalski",
+  "publisher": "pczekalski",
+  "icon": "images/AVR_VSCode.png",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pczekalski/vscode-avr-assembler-plugin.git"
+  },
+  "homepage": "https://github.com/pczekalski",
+  "bugs": {
+    "url": "https://github.com/pczekalski/vscode-avr-assembler-plugin/issues"
+  },
+  "keywords": [
+    "avr",
+    "assembler",
+    "avr-gcc",
+    "avrdude",
+    "embedded"
+  ],
   "engines": {
     "vscode": "^1.110.0"
   },
