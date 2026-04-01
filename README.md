@@ -1,7 +1,10 @@
 <table width="100%">
-  <tr>
+  <tr width="100%">
     <td align="left" valign="middle">
       <img src="images/EN-Co-Funded-logo.png" alt="Co-Funded by the European Union" height="64">
+    </td>
+    <td align="center" valign="middle">
+    <h3>Assembler - the DNA of Computers</h3>
     </td>
     <td align="right" valign="middle">
       <img src="images/MultiASM-logo.png" alt="MultiASM" height="64">
@@ -259,5 +262,11 @@ Linking errors (e.g. unknown identifier such as label) do not guide you to the s
 
 Initial release for public
 
+
+## About the project:
+
+The MultiASM project has been co-funded by the European Union. Views and opinions expressed are however those of the author or authors only and do not necessarily reflect those of the European Union or the Foundation for the Development of the Education System. Neither the European Union nor the entity providing the grant can be held responsible for them.
+
+[MultiASM website](https://multiasm.eu)
 
 **Enjoy!**
