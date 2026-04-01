@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "publisher": "pczekalski-dev",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",

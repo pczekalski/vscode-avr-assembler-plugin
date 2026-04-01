@@ -505,7 +505,7 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
                 case 'openSettings':
                     await vscode.commands.executeCommand(
                         'workbench.action.openSettings',
-                        '@ext:pczekalski.avr-assembler'
+                        '@ext:pczekalski-dev.avr-assembler'
                     );
                     break;
             }
