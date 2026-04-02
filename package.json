@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "pczekalski-dev",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",
@@ -19,6 +19,7 @@
     "assembler",
     "avr-gcc",
     "avrdude",
+    "uart",
     "embedded"
   ],
   "engines": {
@@ -30,22 +31,34 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:avr-asm-builder.buildCurrentFile",
-    "onCommand:avr-asm-builder.uploadCurrentHex"
+    "onCommand:avr-asm-builder.uploadCurrentHex",
+    "onCommand:avr-asm-builder.openSerialMonitor"
+  ],
+  "extensionDependencies": [
+    "ms-vscode.vscode-serial-monitor"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "avr-asm-builder.buildCurrentFile",
-        "title": "AVR: Build Current .s File"
+        "title": "AVR: Build Current .s File",
+        "category": "AVR Assembler"
       },
       {
         "command": "avr-asm-builder.uploadCurrentHex",
-        "title": "AVR: Upload Current HEX"
+        "title": "AVR: Upload Current HEX",
+        "category": "AVR Assembler"
       },
       {
         "command": "avr-asm-builder.selectUploadPort",
-        "title": "AVR: Select Upload Port"
+        "title": "AVR: Select Upload Port",
+        "category": "AVR Assembler"
+      },
+      {
+        "command": "avr-asm-builder.openSerialMonitor",
+        "title": "AVR Assembler: Open Serial Monitor",
+        "category": "AVR Assembler"
       }
     ],
     "configuration": {
@@ -117,9 +130,66 @@
         "avr-asm-builder.avrdudeBaud": {
           "type": "number",
           "default": 115200,
+          "enum": [
+            300,
+            1200,
+            2400,
+            4800,
+            9600,
+            14400,
+            19200,
+            28800,
+            38400,
+            57600,
+            115200,
+            230400
+          ],
           "title": "Upload Baud Rate",
           "markdownDescription": "Baud rate passed to `avrdude` via `-b`.",
           "order": 5
+        },
+        "avr-asm-builder.serial.port": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Serial port used for AVR monitor. Example:\n\n- Linux: `/dev/ttyUSB0`, `/dev/ttyACM0`\n- Windows: `COM3`\n\nLeave empty to select manually.",
+          "order": 31
+        },
+        "avr-asm-builder.serial.baudRate": {
+          "type": "number",
+          "default": 9600,
+          "enum": [
+            300,
+            1200,
+            2400,
+            4800,
+            9600,
+            14400,
+            19200,
+            28800,
+            38400,
+            57600,
+            115200,
+            230400
+          ],
+          "markdownDescription": "Baud rate for serial communication. Must match firmware UART configuration.",
+          "order": 32
+        },
+        "avr-asm-builder.serial.lineEnding": {
+          "type": "string",
+          "default": "none",
+          "enum": [
+            "none",
+            "lf",
+            "crlf"
+          ],
+          "markdownDescription": "Line ending appended when sending text:\n\n- `none` → no terminator\n- `lf` → `\\n`\n- `crlf` → `\\r\\n`",
+          "order": 33
+        },
+        "avr-asm-builder.serial.autoOpenAfterUpload": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Automatically open Serial Monitor after successful upload (`avrdude`).",
+          "order": 34
         }
       }
     },
@@ -128,7 +198,28 @@
         {
           "command": "avr-asm-builder.buildCurrentFile",
           "when": "resourceExtname == .s",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "avr-asm-builder.uploadHex",
+          "when": "resourceExtname == .s || resourceExtname == .hex",
+          "group": "navigation@2"
+        },
+        {
+          "command": "avr-asm-builder.openSerialMonitor",
+          "when": "resourceExtname == .s || resourceExtname == .hex",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "avr-asm-builder.buildCurrentFile"
+        },
+        {
+          "command": "avr-asm-builder.uploadHex"
+        },
+        {
+          "command": "avr-asm-builder.openSerialMonitor"
         }
       ]
     },
@@ -146,7 +237,9 @@
         {
           "id": "avrAsmBuilder.sidebar",
           "name": "AVR Toolbox",
-          "type": "webview"
+          "type": "webview",
+          "icon": "images/avr_sidebar_icon_simplified.svg",
+          "contextualTitle": "AVR Toolbox"
         }
       ]
     }
@@ -160,5 +253,8 @@
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@microsoft/vscode-serial-monitor-api": "^0.1.7"
   }
 }

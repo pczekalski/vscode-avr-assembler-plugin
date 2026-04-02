@@ -2,6 +2,14 @@ import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+    getSerialMonitorApi,
+    Version,
+    LineEnding,
+    Parity,
+    StopBits,
+    SerialMonitorApi
+} from '@microsoft/vscode-serial-monitor-api';
 
 type RunResult = {
     code: number | null;
@@ -18,7 +26,147 @@ type BuildPaths = {
     hex: string;
 };
 
+function getConfigurationTarget(): vscode.ConfigurationTarget {
+    return vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+}
 
+function mapLineEnding(value: string): LineEnding {
+    switch (value.toLowerCase()) {
+        case 'lf':
+            return LineEnding.LF;
+        case 'crlf':
+            return LineEnding.CRLF;
+        default:
+            return LineEnding.None;
+    }
+}
+
+async function selectMonitorPort(): Promise<string | undefined> {
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+    const current = config.get<string>('serial.port', '');
+    const detected = await detectSerialPorts();
+
+    const picks: vscode.QuickPickItem[] = [];
+    const seen = new Set<string>();
+
+    if (current) {
+        picks.push({
+            label: current,
+            description: 'current setting'
+        });
+        seen.add(current);
+    }
+
+    for (const port of detected) {
+        if (seen.has(port)) {
+            continue;
+        }
+        picks.push({
+            label: port,
+            description: 'detected'
+        });
+        seen.add(port);
+    }
+
+    if (picks.length === 0) {
+        const manual = await vscode.window.showInputBox({
+            title: 'Serial Monitor Port',
+            prompt: 'Enter serial monitor port manually',
+            placeHolder: process.platform === 'win32' ? 'COM3' : '/dev/ttyUSB0',
+            value: current
+        });
+
+        if (!manual) {
+            return undefined;
+        }
+
+        await config.update('serial.port', manual, getConfigurationTarget());
+        return manual;
+    }
+
+    const choice = await vscode.window.showQuickPick(picks, {
+        title: 'Select Serial Monitor Port',
+        placeHolder: 'Choose a serial port for Serial Monitor'
+    });
+
+    if (!choice) {
+        return undefined;
+    }
+
+    await config.update('serial.port', choice.label, getConfigurationTarget());
+    return choice.label;
+}
+
+async function openSerialMonitor(
+    context: vscode.ExtensionContext
+): Promise<void> {
+    const config = vscode.workspace.getConfiguration('avr-asm-builder');
+
+    let port = config.get<string>('serial.port', '').trim();
+    const baudRate = config.get<number>('serial.baudRate', 115200);
+    const lineEndingValue = config.get<string>('serial.lineEnding', 'none');
+
+    if (!port) {
+        const selected = await selectMonitorPort();
+        if (!selected) {
+            vscode.window.showWarningMessage('Serial Monitor port was not selected.');
+            return;
+        }
+        port = selected;
+    }
+
+    const extension = vscode.extensions.getExtension('ms-vscode.vscode-serial-monitor');
+    if (!extension) {
+        const action = await vscode.window.showErrorMessage(
+            'Microsoft Serial Monitor extension is required but not installed.',
+            'Open Extensions'
+        );
+
+        if (action === 'Open Extensions') {
+            await vscode.commands.executeCommand(
+                'workbench.extensions.search',
+                'ms-vscode.vscode-serial-monitor'
+            );
+        }
+        return;
+    }
+
+    let api: SerialMonitorApi | undefined;
+    try {
+        api = await getSerialMonitorApi(Version.latest, context);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Failed to get Serial Monitor API: ${message}`);
+        return;
+    }
+
+    if (!api) {
+        vscode.window.showErrorMessage(
+            'Serial Monitor API is unavailable. Check that ms-vscode.vscode-serial-monitor is installed and enabled.'
+        );
+        return;
+    }
+
+    try {
+        await api.startMonitoringPort({
+            port: port,
+            baudRate: baudRate,
+            lineEnding: mapLineEnding(lineEndingValue),
+            dataBits: 8,
+            stopBits: StopBits.One,
+            parity: Parity.None
+        });
+
+        vscode.window.showInformationMessage(
+            `Serial Monitor opened on ${port} @ ${baudRate}`
+        );
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Opening Serial Monitor failed: ${message}`);
+    }
+}
 
 function runCommand(
     command: string,
@@ -287,17 +435,31 @@ async function selectUploadPort(): Promise<void> {
 
 function updateButtonsVisibility(
     buildButton: vscode.StatusBarItem,
-    uploadButton: vscode.StatusBarItem
+    uploadButton: vscode.StatusBarItem,
+    monitorButton: vscode.StatusBarItem
 ): void {
     const editor = vscode.window.activeTextEditor;
-    const visible = !!editor && path.extname(editor.document.fileName).toLowerCase() === '.s';
+    const ext = editor ? path.extname(editor.document.fileName).toLowerCase() : '';
+    const showBuild = ext === '.s';
+    const showUpload = ext === '.s' || ext === '.hex';
+    const showMonitor = ext === '.s' || ext === '.hex';
 
-    if (visible) {
+    if (showBuild) {
         buildButton.show();
-        uploadButton.show();
     } else {
         buildButton.hide();
+    }
+
+    if (showUpload) {
+        uploadButton.show();
+    } else {
         uploadButton.hide();
+    }
+
+    if (showMonitor) {
+        monitorButton.show();
+    } else {
+        monitorButton.hide();
     }
 }
 
@@ -497,6 +659,11 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
                     this.postState();
                     break;
 
+                case 'monitor':
+                    await vscode.commands.executeCommand('avr-asm-builder.openSerialMonitor');
+                    this.postState();
+                    break;
+
                 case 'selectPort':
                     await vscode.commands.executeCommand('avr-asm-builder.selectUploadPort');
                     this.postState();
@@ -527,6 +694,8 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
         const programmer = config.get<string>('avrdudeProgrammer', 'arduino');
         const baud = config.get<number>('avrdudeBaud', 115200);
         const outputDirectory = config.get<string>('outputDirectory', 'build');
+        const monitorPort = config.get<string>('serial.port', '');
+        const monitorBaud = config.get<number>('serial.baudRate', 9600);
 
         this.view.webview.postMessage({
             type: 'state',
@@ -534,7 +703,9 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
             port,
             programmer,
             baud,
-            outputDirectory
+            outputDirectory,
+            monitorPort,
+            monitorBaud
         });
     }
 
@@ -616,12 +787,15 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
         <div class="row"><span class="label">Programmer:</span><span id="programmer">-</span></div>
         <div class="row"><span class="label">Baud:</span><span id="baud">-</span></div>
         <div class="row"><span class="label">Build dir:</span><span id="outputDirectory">-</span></div>
+        <div class="row"><span class="label">Mon port:</span><span id="monitorPort">-</span></div>
+        <div class="row"><span class="label">Mon baud:</span><span id="monitorBaud">-</span></div>
     </div>
 
     <div class="card">
         <button id="buildBtn">Build Current .s File</button>
         <button id="uploadBtn">Upload Current HEX</button>
         <button id="portBtn" class="secondary">Select Upload Port</button>
+        <button id="monitorBtn">Open Serial Monitor</button>
         <button id="settingsBtn" class="secondary">Open Settings</button>
     </div>
 
@@ -644,6 +818,10 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
             vscode.postMessage({ command: 'openSettings' });
         });
 
+        document.getElementById('monitorBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'monitor' });
+        });
+
         window.addEventListener('message', (event) => {
             const message = event.data;
 
@@ -653,6 +831,8 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
                 document.getElementById('programmer').textContent = message.programmer ?? '-';
                 document.getElementById('baud').textContent = String(message.baud ?? '-');
                 document.getElementById('outputDirectory').textContent = message.outputDirectory ?? '-';
+                document.getElementById('monitorPort').textContent = message.monitorPort ?? '-';
+                document.getElementById('monitorBaud').textContent = String(message.monitorBaud ?? '-');
             }
         });
     </script>
@@ -664,7 +844,8 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
 export function activate(context: vscode.ExtensionContext): void {
     const output = vscode.window.createOutputChannel('AVR ASM Builder');
     const diagnostics = vscode.languages.createDiagnosticCollection('avr-asm-builder');
-
+    const sidebarProvider = new AvrSidebarProvider(context);
+    let serialMonitorApiDisposable: vscode.Disposable | undefined;
     const buildCommand = vscode.commands.registerCommand(
         'avr-asm-builder.buildCurrentFile',
         async () => {
@@ -685,6 +866,14 @@ export function activate(context: vscode.ExtensionContext): void {
         async () => {
             try {
                 await uploadCurrentHex(output);
+
+                const config = vscode.workspace.getConfiguration('avr-asm-builder');
+                const autoOpenAfterUpload = config.get<boolean>('serial.autoOpenAfterUpload', false);
+
+                if (autoOpenAfterUpload) {
+                    await openSerialMonitor(context);
+                }
+
                 sidebarProvider.refresh();
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
@@ -694,7 +883,18 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }
     );
-
+    const openSerialMonitorCommand = vscode.commands.registerCommand(
+        'avr-asm-builder.openSerialMonitor',
+        async () => {
+            try {
+                await openSerialMonitor(context);
+                sidebarProvider.refresh();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                vscode.window.showErrorMessage(`Serial Monitor failed: ${message}`);
+            }
+        }
+    );
     const selectPortCommand = vscode.commands.registerCommand(
         'avr-asm-builder.selectUploadPort',
         async () => {
@@ -718,19 +918,22 @@ export function activate(context: vscode.ExtensionContext): void {
     uploadButton.tooltip = 'Upload current HEX';
     uploadButton.command = 'avr-asm-builder.uploadCurrentHex';
 
+    const monitorButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
+    monitorButton.text = '$(plug) AVR Monitor';
+    monitorButton.tooltip = 'Open AVR Serial Monitor';
+    monitorButton.command = 'avr-asm-builder.openSerialMonitor';
+
     setTimeout(() => {
-        updateButtonsVisibility(buildButton, uploadButton);
+        updateButtonsVisibility(buildButton, uploadButton, monitorButton);
     }, 100);
 
     const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
-        updateButtonsVisibility(buildButton, uploadButton);
+        updateButtonsVisibility(buildButton, uploadButton, monitorButton);
     });
 
     const documentCloseDisposable = vscode.workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
     });
-
-    const sidebarProvider = new AvrSidebarProvider(context);
 
     const sidebarDisposable = vscode.window.registerWebviewViewProvider(
         AvrSidebarProvider.viewType,
@@ -742,7 +945,7 @@ export function activate(context: vscode.ExtensionContext): void {
             sidebarProvider.refresh();
         }
     });
-    
+
 
     context.subscriptions.push(
         output,
@@ -755,7 +958,9 @@ export function activate(context: vscode.ExtensionContext): void {
         editorChangeDisposable,
         documentCloseDisposable,
         sidebarDisposable,
-        configChangeDisposable
+        configChangeDisposable,
+        openSerialMonitorCommand,
+        monitorButton
     );
 }
 

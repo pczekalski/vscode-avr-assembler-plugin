@@ -51,6 +51,7 @@ It provides a minimal, fast workflow similar to PlatformIO, but focused on **pur
 ## Requirements
 
 To use **AVR Assembler Toolbox**, ensure the following tools and environment are available.
+This extension also requires Microsoft Serial Monitor. VS Code will prompt to install the missing dependency when needed.
 
 ---
 
@@ -327,6 +328,10 @@ Initial release for public
 ### 0.1.9
 
 RC-1 version with sidebar, icons, documentation and settings
+
+### 0.3.0
+
+Added Serial Monitor
 
 
 ## About the project:
