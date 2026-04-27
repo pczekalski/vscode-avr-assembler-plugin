@@ -337,6 +337,9 @@ Added Serial Monitor
 
 Serial Monitor re-use logic updated
 
+### 0.4.1
+
+Re-organised configuration logic and optimised source files.
 
 ## About the project:
 

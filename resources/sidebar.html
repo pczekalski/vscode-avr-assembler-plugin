@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';"
+    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVR Toolbox</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            background: var(--vscode-sideBar-background);
+            padding: 12px;
+        }
+
+        .card {
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: var(--vscode-editor-background);
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .row {
+            margin: 6px 0;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .label {
+            opacity: 0.8;
+            display: inline-block;
+            min-width: 92px;
+        }
+
+        button {
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--vscode-button-border, transparent);
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--vscode-button-foreground);
+            background: var(--vscode-button-background);
+        }
+
+        button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+
+        .secondary {
+            color: var(--vscode-button-secondaryForeground);
+            background: var(--vscode-button-secondaryBackground);
+        }
+
+        .secondary:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="title">AVR Toolbox</div>
+        <div class="row"><span class="label">MCU:</span><span id="mcu">-</span></div>
+        <div class="row"><span class="label">Port:</span><span id="port">-</span></div>
+        <div class="row"><span class="label">Programmer:</span><span id="programmer">-</span></div>
+        <div class="row"><span class="label">Baud:</span><span id="baud">-</span></div>
+        <div class="row"><span class="label">Build dir:</span><span id="outputDirectory">-</span></div>
+        <div class="row"><span class="label">Mon port:</span><span id="monitorPort">-</span></div>
+        <div class="row"><span class="label">Mon baud:</span><span id="monitorBaud">-</span></div>
+    </div>
+
+    <div class="card">
+        <button id="buildBtn">Build Current .s File</button>
+        <button id="uploadBtn">Upload Current HEX</button>
+        <button id="portBtn" class="secondary">Select Upload Port</button>
+        <button id="monitorBtn">Open Serial Monitor</button>
+        <button id="settingsBtn" class="secondary">Open Settings</button>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        document.getElementById('buildBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'build' });
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'upload' });
+        });
+
+        document.getElementById('portBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'selectPort' });
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'openSettings' });
+        });
+
+        document.getElementById('monitorBtn').addEventListener('click', () => {
+            vscode.postMessage({ command: 'monitor' });
+        });
+
+        window.addEventListener('message', (event) => {
+            const message = event.data;
+
+            if (message.type === 'state') {
+                document.getElementById('mcu').textContent = message.mcu ?? '-';
+                document.getElementById('port').textContent = message.port ?? '-';
+                document.getElementById('programmer').textContent = message.programmer ?? '-';
+                document.getElementById('baud').textContent = String(message.baud ?? '-');
+                document.getElementById('outputDirectory').textContent = message.outputDirectory ?? '-';
+                document.getElementById('monitorPort').textContent = message.monitorPort ?? '-';
+                document.getElementById('monitorBaud').textContent = String(message.monitorBaud ?? '-');
+            }
+        });
+    </script>
+</body>
+</html>

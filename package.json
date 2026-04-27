@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.3.11",
+  "version": "0.4.1",
   "publisher": "pczekalski-dev",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",
@@ -61,138 +61,124 @@
         "category": "AVR Assembler"
       }
     ],
-    "configuration": {
-      "title": "AVR ASM Builder Settings",
-      "properties": {
-        "avr-asm-builder.mcu": {
-          "type": "string",
-          "default": "atmega328p",
-          "title": "Target MCU",
-          "markdownDescription": "AVR microcontroller passed to `avr-gcc` via `-mmcu=` and used by upload tools where applicable.",
-          "order": 1
-        },
-        "avr-asm-builder.outputDirectory": {
-          "type": "string",
-          "default": "build",
-          "title": "Output Directory",
-          "markdownDescription": "Directory, relative to the workspace or source file, where generated build artifacts such as `.o`, `.elf`, and `.hex` files are written.",
-          "order": 2
-        },
-        "avr-asm-builder.useNoStartFiles": {
-          "type": "boolean",
-          "default": true,
-          "title": "Use No Start Files",
-          "markdownDescription": "If enabled, links with `-nostartfiles`. Recommended for pure AVR assembly projects that provide their own reset vector and startup code.",
-          "order": 3
-        },
-        "avr-asm-builder.avrGccPath": {
-          "type": "string",
-          "default": "avr-gcc",
-          "title": "AVR-GCC Path",
-          "markdownDescription": "Path or command name for `avr-gcc`. Use an absolute path if the AVR toolchain is not available in your system `PATH`.",
-          "order": 10
-        },
-        "avr-asm-builder.avrObjcopyPath": {
-          "type": "string",
-          "default": "avr-objcopy",
-          "title": "AVR-Objcopy Path",
-          "markdownDescription": "Path or command name for `avr-objcopy`.",
-          "order": 11
-        },
-        "avr-asm-builder.avrSizePath": {
-          "type": "string",
-          "default": "avr-size",
-          "title": "AVR-Size Path",
-          "markdownDescription": "Path or command name for `avr-size`.",
-          "order": 12
-        },
-        "avr-asm-builder.avrdudePath": {
-          "type": "string",
-          "default": "avrdude",
-          "title": "AVRDUDE Path",
-          "markdownDescription": "Path or command name for `avrdude`.",
-          "order": 13
-        },
-        "avr-asm-builder.avrdudeProgrammer": {
-          "type": "string",
-          "default": "arduino",
-          "title": "Upload Programmer",
-          "markdownDescription": "Programmer type passed to `avrdude` via `-c`.",
-          "order": 20
-        },
-        "avr-asm-builder.avrdudePort": {
-          "type": "string",
-          "default": "/dev/ttyUSB0",
-          "title": "Upload Port",
-          "markdownDescription": "Serial port passed to `avrdude` via `-P`, for example `/dev/ttyUSB0`, `/dev/ttyACM0`, or `COM3`. You can enter it manually or use the **AVR: Select Upload Port** command.",
-          "order": 4
-        },
-        "avr-asm-builder.avrdudeBaud": {
-          "type": "number",
-          "default": 115200,
-          "enum": [
-            300,
-            1200,
-            2400,
-            4800,
-            9600,
-            14400,
-            19200,
-            28800,
-            38400,
-            57600,
-            115200,
-            230400
-          ],
-          "title": "Upload Baud Rate",
-          "markdownDescription": "Baud rate passed to `avrdude` via `-b`.",
-          "order": 5
-        },
-        "avr-asm-builder.serial.port": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Serial port used for AVR monitor. Example:\n\n- Linux: `/dev/ttyUSB0`, `/dev/ttyACM0`\n- Windows: `COM3`\n\nLeave empty to select manually.",
-          "order": 31
-        },
-        "avr-asm-builder.serial.baudRate": {
-          "type": "number",
-          "default": 9600,
-          "enum": [
-            300,
-            1200,
-            2400,
-            4800,
-            9600,
-            14400,
-            19200,
-            28800,
-            38400,
-            57600,
-            115200,
-            230400
-          ],
-          "markdownDescription": "Baud rate for serial communication. Must match firmware UART configuration.",
-          "order": 32
-        },
-        "avr-asm-builder.serial.lineEnding": {
-          "type": "string",
-          "default": "none",
-          "enum": [
-            "none",
-            "lf",
-            "crlf"
-          ],
-          "markdownDescription": "Line ending appended when sending text:\n\n- `none` → no terminator\n- `lf` → `\\n`\n- `crlf` → `\\r\\n`",
-          "order": 33
-        },
-        "avr-asm-builder.serial.autoOpenAfterUpload": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Automatically open Serial Monitor after successful upload (`avrdude`).",
-          "order": 34
-        }
+    "configuration": [
+  {
+    "title": "Compiler and Linker",
+    "properties": {
+      "avr-asm-builder.mcu": {
+        "type": "string",
+        "default": "atmega328p",
+        "title": "Target MCU",
+        "markdownDescription": "AVR microcontroller passed to `avr-gcc` via `-mmcu=` and used by upload tools where applicable.",
+        "order": 1
+      },
+      "avr-asm-builder.outputDirectory": {
+        "type": "string",
+        "default": "build",
+        "title": "Output Directory",
+        "markdownDescription": "Directory, relative to the workspace or source file, where generated build artifacts such as `.o`, `.elf`, and `.hex` files are written.",
+        "order": 2
+      },
+      "avr-asm-builder.useNoStartFiles": {
+        "type": "boolean",
+        "default": true,
+        "title": "Use No Start Files",
+        "markdownDescription": "If enabled, links with `-nostartfiles`. Recommended for pure AVR assembly projects that provide their own reset vector and startup code.",
+        "order": 3
+      },
+      "avr-asm-builder.avrGccPath": {
+        "type": "string",
+        "default": "avr-gcc",
+        "title": "AVR-GCC Path",
+        "markdownDescription": "Path or command name for `avr-gcc`. Use an absolute path if the AVR toolchain is not available in your system `PATH`.",
+        "order": 4
+      },
+      "avr-asm-builder.avrObjcopyPath": {
+        "type": "string",
+        "default": "avr-objcopy",
+        "title": "AVR-Objcopy Path",
+        "markdownDescription": "Path or command name for `avr-objcopy`.",
+        "order": 5
+      },
+      "avr-asm-builder.avrSizePath": {
+        "type": "string",
+        "default": "avr-size",
+        "title": "AVR-Size Path",
+        "markdownDescription": "Path or command name for `avr-size`.",
+        "order": 6
       }
-    },
+    }
+  },
+  {
+    "title": "Firmware Upload",
+    "properties": {
+      "avr-asm-builder.avrdudePath": {
+        "type": "string",
+        "default": "avrdude",
+        "title": "AVRDUDE Path",
+        "markdownDescription": "Path or command name for `avrdude`.",
+        "order": 10
+      },
+      "avr-asm-builder.avrdudePort": {
+        "type": "string",
+        "default": "/dev/ttyUSB0",
+        "title": "Upload Port",
+        "markdownDescription": "Serial port passed to `avrdude` via `-P`, for example `/dev/ttyUSB0`, `/dev/ttyACM0`, or `COM3`. You can enter it manually or use the **AVR: Select Upload Port** command.",
+        "order": 11
+      },
+      "avr-asm-builder.avrdudeBaud": {
+        "type": "number",
+        "default": 115200,
+        "enum": [300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200, 230400],
+        "title": "Upload Baud Rate",
+        "markdownDescription": "Baud rate passed to `avrdude` via `-b`.",
+        "order": 12
+      },
+      "avr-asm-builder.avrdudeProgrammer": {
+        "type": "string",
+        "default": "arduino",
+        "title": "Upload Programmer",
+        "markdownDescription": "Programmer type passed to `avrdude` via `-c`.",
+        "order": 13
+      },
+      "avr-asm-builder.serial.port": {
+        "type": "string",
+        "default": "",
+        "title": "Serial Port",
+        "markdownDescription": "Serial port used for AVR monitor. Example:\n\n- Linux: `/dev/ttyUSB0`, `/dev/ttyACM0`\n- Windows: `COM3`\n\nLeave empty to select manually.",
+        "order": 14
+      }
+    }
+  },
+  {
+    "title": "Serial Monitor",
+    "properties": {
+      "avr-asm-builder.serial.baudRate": {
+        "type": "number",
+        "default": 9600,
+        "enum": [300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200, 230400],
+        "title": "Monitor Baud Rate",
+        "markdownDescription": "Baud rate for serial communication. Must match firmware UART configuration.",
+        "order": 20
+      },
+      "avr-asm-builder.serial.lineEnding": {
+        "type": "string",
+        "default": "none",
+        "enum": ["none", "lf", "crlf"],
+        "title": "Line Ending",
+        "markdownDescription": "Line ending appended when sending text:\n\n- `none` → no terminator\n- `lf` → `\\n`\n- `crlf` → `\\r\\n`",
+        "order": 21
+      },
+      "avr-asm-builder.serial.autoOpenAfterUpload": {
+        "type": "boolean",
+        "default": false,
+        "title": "Auto Open After Upload",
+        "markdownDescription": "Automatically open Serial Monitor after successful upload (`avrdude`).",
+        "order": 22
+      }
+    }
+  }
+],
     "menus": {
       "editor/title": [
         {
