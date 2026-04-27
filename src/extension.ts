@@ -11,6 +11,8 @@ import {
     SerialMonitorApi
 } from '@microsoft/vscode-serial-monitor-api';
 
+let lastAttemptedPort: string | undefined = undefined;
+
 type RunResult = {
     code: number | null;
     stdout: string;
@@ -103,52 +105,40 @@ async function openSerialMonitor(
     context: vscode.ExtensionContext
 ): Promise<void> {
     const config = vscode.workspace.getConfiguration('avr-asm-builder');
-
     let port = config.get<string>('serial.port', '').trim();
     const baudRate = config.get<number>('serial.baudRate', 115200);
     const lineEndingValue = config.get<string>('serial.lineEnding', 'none');
 
     if (!port) {
         const selected = await selectMonitorPort();
-        if (!selected) {
-            vscode.window.showWarningMessage('Serial Monitor port was not selected.');
-            return;
-        }
+        if (!selected) return;
         port = selected;
     }
 
-    const extension = vscode.extensions.getExtension('ms-vscode.vscode-serial-monitor');
-    if (!extension) {
-        const action = await vscode.window.showErrorMessage(
-            'Microsoft Serial Monitor extension is required but not installed.',
-            'Open Extensions'
-        );
+    const api = await getSerialMonitorApi(Version.latest, context);
+    if (!api) return;
 
-        if (action === 'Open Extensions') {
-            await vscode.commands.executeCommand(
-                'workbench.extensions.search',
-                'ms-vscode.vscode-serial-monitor'
-            );
+    // --- REUSE LOGIC ---
+    if (lastAttemptedPort === port) {
+        // Focus the existing group to bring the tab to front
+        await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+        
+        try {
+            // Very short race to trigger a focus/refresh without 
+            // waiting for the driver error that spawns the second window.
+            await Promise.race([
+                api.startMonitoringPort({
+                    port, baudRate, lineEnding: mapLineEnding(lineEndingValue),
+                    dataBits: 8, stopBits: StopBits.One, parity: Parity.None
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('STAY_SILENT')), 150))
+            ]);
+        } catch (e: any) {
+            if (e.message === 'STAY_SILENT') return;
         }
-        return;
     }
 
-    let api: SerialMonitorApi | undefined;
-    try {
-        api = await getSerialMonitorApi(Version.latest, context);
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        vscode.window.showErrorMessage(`Failed to get Serial Monitor API: ${message}`);
-        return;
-    }
-
-    if (!api) {
-        vscode.window.showErrorMessage(
-            'Serial Monitor API is unavailable. Check that ms-vscode.vscode-serial-monitor is installed and enabled.'
-        );
-        return;
-    }
-
+    // --- OPEN/RECONNECT LOGIC ---
     try {
         await api.startMonitoringPort({
             port: port,
@@ -159,12 +149,17 @@ async function openSerialMonitor(
             parity: Parity.None
         });
 
-        vscode.window.showInformationMessage(
-            `Serial Monitor opened on ${port} @ ${baudRate}`
-        );
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        vscode.window.showErrorMessage(`Opening Serial Monitor failed: ${message}`);
+        lastAttemptedPort = port;
+    } catch (err: any) {
+        const msg = err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+        
+        if (msg.toLowerCase().includes("busy") || msg.toLowerCase().includes("access denied")) {
+            lastAttemptedPort = port;
+            await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+        } else {
+            vscode.window.showErrorMessage(`Serial Monitor: ${msg}`);
+            lastAttemptedPort = undefined; 
+        }
     }
 }
 
@@ -709,7 +704,7 @@ class AvrSidebarProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private getHtml(webview: vscode.Webview): string {
+private getHtml(webview: vscode.Webview): string {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -846,6 +841,8 @@ export function activate(context: vscode.ExtensionContext): void {
     const diagnostics = vscode.languages.createDiagnosticCollection('avr-asm-builder');
     const sidebarProvider = new AvrSidebarProvider(context);
     let serialMonitorApiDisposable: vscode.Disposable | undefined;
+
+
     const buildCommand = vscode.commands.registerCommand(
         'avr-asm-builder.buildCurrentFile',
         async () => {

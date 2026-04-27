@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.3.0",
+  "version": "0.3.11",
   "publisher": "pczekalski-dev",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",
@@ -201,7 +201,7 @@
           "group": "navigation@1"
         },
         {
-          "command": "avr-asm-builder.uploadHex",
+          "command": "avr-asm-builder.uploadCurrentHex",
           "when": "resourceExtname == .s || resourceExtname == .hex",
           "group": "navigation@2"
         },
@@ -216,7 +216,7 @@
           "command": "avr-asm-builder.buildCurrentFile"
         },
         {
-          "command": "avr-asm-builder.uploadHex"
+          "command": "avr-asm-builder.uploadCurrentHex"
         },
         {
           "command": "avr-asm-builder.openSerialMonitor"
@@ -250,7 +250,7 @@
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "^20.19.39",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.5.4"
   },
