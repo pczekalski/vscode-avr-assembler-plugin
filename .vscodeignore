@@ -9,3 +9,7 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+# Ensure these are NOT ignored (standard practice is to leave them out of this file)
+!syntaxes/*.json
+!language-configuration.json

@@ -2,7 +2,7 @@
   "name": "avr-assembler",
   "displayName": "AVR Assembler Toolbox",
   "description": "AVR plugin for Assembler code compilation, linking and uploads",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "pczekalski-dev",
   "icon": "images/AVR_VSCode.png",
   "license": "Apache-2.0",
@@ -39,6 +39,21 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+        {
+            "id": "avr",
+            "aliases": ["AVR Assembler", "avr"],
+            "extensions": [".s"],
+            "configuration": "./language-configuration.json"
+        }
+    ],
+    "grammars": [
+        {
+            "language": "avr",
+            "scopeName": "source.avr",
+            "path": "./syntaxes/avr.tmLanguage.json"
+        }
+    ],
     "commands": [
       {
         "command": "avr-asm-builder.buildCurrentFile",

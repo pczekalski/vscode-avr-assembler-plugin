@@ -1,0 +1,37 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "AVR Assembler",
+    "scopeName": "source.avr",
+    "patterns": [
+        { "include": "#comments" },
+        { "include": "#instructions" },
+        { "include": "#registers" },
+        { "include": "#directives" }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [{
+                "name": "comment.line.semicolon.avr",
+                "match": ";.*$"
+            }]
+        },
+        "instructions": {
+            "patterns": [{
+                "name": "keyword.operator.avr",
+                "match": "\\b(?i)(lpm|ldi|out|in|add|sub|rjmp|call|ret|sbi|cbi|dec|brne)\\b"
+            }]
+        },
+        "registers": {
+            "patterns": [{
+                "name": "variable.language.register.avr",
+                "match": "\\b(?i)(r[0-2][0-9]|r3[0-1]|r[0-9])\\b"
+            }]
+        },
+        "directives": {
+            "patterns": [{
+                "name": "keyword.control.directive.avr",
+                "match": "^\\s*\\.[a-z]+\\b"
+            }]
+        }
+    }
+}

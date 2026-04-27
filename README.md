@@ -341,6 +341,10 @@ Serial Monitor re-use logic updated
 
 Re-organised configuration logic and optimised source files.
 
+### 0.4.2
+
+Introducing beta version of AVR assembler syntax highlight
+
 ## About the project:
 
 <img src="images/EN-Co-Funded-logo.png" alt="Co-Funded by the European Union" height="64">
