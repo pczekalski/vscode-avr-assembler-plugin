@@ -333,6 +333,10 @@ RC-1 version with sidebar, icons, documentation and settings
 
 Added Serial Monitor
 
+### 0.3.8
+
+Serial Monitor re-use logic updated
+
 
 ## About the project:
 
